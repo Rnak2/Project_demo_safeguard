@@ -2,36 +2,37 @@
 #include <WiFiNINA.h>
 #include <Servo.h>
 #include <PubSubClient.h>
+#include "secret.h"
 
-// WiFi and MQTT settings
-const char* ssid = "168!";
-const char* password = "passwordey";
-const char* mqtt_server = "192.168.86.182"; // IP of your Raspberry Pi
-const int mqtt_port = 1883; // Default MQTT port
+//WiFi and MQTT 
+const char* ssid = SECRET_SSID;
+const char* password = SECRET_PASS;
+const char* mqtt_server = "192.168.86.182"; 
+const int mqtt_port = 1883; 
 
-// IFTTT Webhooks settings
+//IFTTT  
 char HOST_NAME[] = "maker.ifttt.com";
 String PATH_NAME_ON = "/trigger/Secure_guard/with/key/b0GGmp9DzmjuUjPq81sZ1I";
 
-// MQTT topics
+//MQTT topics
 const char* commandTopic = "safeguard/command";
 const char* alertTopic = "safeguard/alert";
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
-Servo myServo; // Servo for the safe lock
-int servoPin = 9; // Servo connected on digital pin 9
+Servo myServo; 
+int servoPin = 9; 
 
-// Ultrasonic Sensor Pins
-const int trigPin = 7; // Trig pin connected to D7
-const int echoPin = 8; // Echo pin connected to D8
+//Ultrasonic sensor
+const int trigPin = 7; 
+const int echoPin = 8; 
 long duration, distance;
-bool safeMode = false; // Variable to track safe mode status
-unsigned long lastCheckTime = 0; // To store the last time the distance was checked
-const unsigned long checkInterval = 200; // Interval between checks (milliseconds)
+bool safeMode = false; 
+unsigned long lastCheckTime = 0; 
+const unsigned long checkInterval = 200; 
 
 // Buzzer Pin
-const int buzzerPin = 6; // Buzzer connected on digital pin 10
+const int buzzerPin = 6; 
 
 void setup_wifi();
 void connectToMqtt();
@@ -55,7 +56,7 @@ void setup_wifi() {
         delay(500);
         Serial.print(".");
         attempts++;
-        if (attempts >= 20) { // Retry limit
+        if (attempts >= 20) { 
             Serial.println("Failed to connect to WiFi.");
             return;
         }
@@ -98,7 +99,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
             unlockSafe();
         } else if (message == "toggle_safe_mode") {
             Serial.println("Received command: toggle_safe_mode");
-            safeMode = !safeMode; // Toggle safe mode status
+            safeMode = !safeMode; 
             if (safeMode) {
                 Serial.println("Safe mode is ON");
             } else {
@@ -109,13 +110,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 void lockSafe() {
-    myServo.write(0); // Adjust as necessary for locked position
+    myServo.write(0); 
     Serial.println("Safe is locked");
     triggerIFTTTNotification(PATH_NAME_ON, "lock");
 }
 
 void unlockSafe() {
-    myServo.write(90); // Adjust as necessary for unlocked position
+    myServo.write(90); 
     Serial.println("Safe is unlocked");
     triggerIFTTTNotification(PATH_NAME_ON, "unlock");
 }
@@ -127,31 +128,29 @@ void checkDistance() {
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
 
-    duration = pulseIn(echoPin, HIGH, 20000); // Timeout of 20ms
+    duration = pulseIn(echoPin, HIGH, 20000); 
     if (duration == 0) {
         Serial.println("No pulse received.");
     } else {
         distance = duration * 0.034 / 2;
         Serial.print("Distance: ");
         Serial.println(distance);
-        if (distance < 20) { // If something is closer than 20 cm
+        if (distance < 20) { 
             Serial.println("Intruder detected! Sending IFTTT alert...");
             triggerIFTTTNotification(PATH_NAME_ON, "Intruder alert!");
-            activateBuzzer(); // Activate the buzzer
+            activateBuzzer(); 
         } else {
-            deactivateBuzzer(); // Deactivate the buzzer if no intruder is detected
+            deactivateBuzzer(); 
         }
     }
 }
 
 void triggerIFTTTNotification(String PATH_NAME, String value1) {
     if (wifiClient.connect(HOST_NAME, 80)) {
-        // Construct the HTTP request
         String request = "GET " + PATH_NAME + "?value1=" + value1 + " HTTP/1.1\r\n" +
                          "Host: " + String(HOST_NAME) + "\r\n" +
                          "Connection: close\r\n\r\n";
         
-        // Send the HTTP request
         wifiClient.print(request);
         Serial.println("Sending message to IFTTT: " + request);
 
@@ -164,7 +163,7 @@ void triggerIFTTTNotification(String PATH_NAME, String value1) {
             }
         }
 
-        // Print the response from the server
+       
         while (wifiClient.available()) {
             char c = wifiClient.read();
             Serial.print(c);
@@ -194,23 +193,23 @@ void setup() {
             delay(1000);
         }
     }
-    pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
-    pinMode(echoPin, INPUT); // Sets the echoPin as an Input
-    pinMode(buzzerPin, OUTPUT); // Sets the buzzerPin as an Output
+    pinMode(trigPin, OUTPUT); 
+    pinMode(echoPin, INPUT); 
+    pinMode(buzzerPin, OUTPUT);
     mqttClient.setServer(mqtt_server, mqtt_port);
     mqttClient.setCallback(mqttCallback);
     connectToMqtt();
-    myServo.attach(servoPin); // Attach servo to its control pin after WiFi setup
-    deactivateBuzzer(); // Ensure the buzzer is off initially
+    myServo.attach(servoPin); 
+    deactivateBuzzer(); 
 }
 
 void loop() {
     if (!mqttClient.connected()) {
-        connectToMqtt(); // Ensure this function tries to connect and handles reconnection
+        connectToMqtt();
     }
-    mqttClient.loop(); // This is the correct reference to the MQTT client object
+    mqttClient.loop(); 
 
-    // Check distance only if safe mode is ON and at specified intervals
+    // Check distance 
     if (safeMode && millis() - lastCheckTime >= checkInterval) {
         checkDistance();
         lastCheckTime = millis();
