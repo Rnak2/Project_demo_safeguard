@@ -3,7 +3,7 @@ import paho.mqtt.client as mqtt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel
 from PyQt5.QtCore import pyqtSlot, QTimer
 
-MQTT_BROKER = "192.168.86.182"  # Use the Raspberry Pi's IP address
+MQTT_BROKER = "192.168.86.182" 
 MQTT_PORT = 1883
 MQTT_TOPIC_COMMAND = "safeguard/command"
 MQTT_TOPIC_ALERT = "safeguard/alert"
@@ -16,7 +16,6 @@ class MainWindow(QMainWindow):
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
 
-        # Setup a timer to regularly call loop
         self.timer = QTimer()
         self.timer.timeout.connect(self.client.loop)
         self.timer.start(100)
@@ -31,11 +30,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
         widget.setLayout(layout)
 
-        # Status Label
         self.label = QLabel("Controller")
         layout.addWidget(self.label)
 
-        # Control Buttons
         lock_button = QPushButton('Lock')
         lock_button.clicked.connect(lambda: self.send_command('lock'))
         layout.addWidget(lock_button)
@@ -56,7 +53,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.label.setText(f"Connection failed: {e}")
             print(f"Connection failed: {e}")
-            QTimer.singleShot(5000, self.connect_mqtt)  # Retry after 5 seconds
+            QTimer.singleShot(5000, self.connect_mqtt)  
 
     def send_command(self, command):
         self.client.publish(MQTT_TOPIC_COMMAND, command)
@@ -70,12 +67,12 @@ class MainWindow(QMainWindow):
         else:
             self.label.setText(f"Failed to connect, return code {rc}")
             print(f"Failed to connect, return code {rc}")
-            QTimer.singleShot(5000, self.connect_mqtt)  # Retry after 5 seconds
+            QTimer.singleShot(5000, self.connect_mqtt)  
 
     def on_disconnect(self, client, userdata, rc):
         self.label.setText("Disconnected from MQTT")
         print("Disconnected from MQTT broker")
-        QTimer.singleShot(5000, self.connect_mqtt)  # Retry after 5 seconds
+        QTimer.singleShot(5000, self.connect_mqtt)  
 
     def on_message(self, client, userdata, msg):
         self.label.setText(f"Alert: {msg.payload.decode()}")
